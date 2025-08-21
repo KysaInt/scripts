@@ -101,7 +101,7 @@ class C4DRenderMonitor:
             os.path.expanduser("~/AppData/Roaming/Maxon/render_queue.xml"),
             os.path.expanduser("~/AppData/Roaming/Maxon/queue.dat"),
             os.path.expanduser("~/Documents/Maxon/render_queue.xml"),
-            "C:\\\\ProgramData\\\\Maxon\\\\render_queue.xml"
+            "C:\\ProgramData\\Maxon\\render_queue.xml"
         ]
         
         for file_path in possible_files:
@@ -252,145 +252,25 @@ def generate_bar_chart_for_history(history_lines):
             enhanced_lines.append(f"{filename}{padding}|{bar}|{time_part}")
     
     return enhanced_lines
-
-def save_cmd_output(stats, folder_path):
-    """保存当前命令行输出到文本文件"""
-    try:
-        # 获取当前时间戳
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-        # 准备要保存的内容
-        lines_to_save = []
-        lines_to_save.append(f"=== C4D渲染监控日志 - {timestamp} ===\\\\n")
-        
-        # 添加历史记录
-        history = stats.get('history', [])
-        if history:
-            lines_to_save.append("渲染历史记录:\\\\n")
-            for line in history:
-                lines_to_save.append(f"{line}\\\\n")
-            lines_to_save.append("\\\\n")
-        
-        # 添加统计信息
-        moved_count = stats.get('moved_count', 0)
-        max_interval = stats.get('max_interval', 0)
-        total_interval = stats.get('total_interval', 0)
-        total_render_time = stats.get('total_render_time', 0)
-        program_start = stats.get('program_start', time.time())
-        
-        first_run_moved = stats.get('first_run_moved', 0)
-        second_run_moved = stats.get('second_run_moved', 0)
-        effective_moved_count = moved_count - first_run_moved - second_run_moved
-        avg_interval = total_interval / effective_moved_count if effective_moved_count > 0 else 0
-        total_time = time.time() - program_start
-        
-        # 渲染状态
-        render_monitor = stats.get('render_monitor')
-        is_rendering = render_monitor.check_render_status() if render_monitor else False
-        render_status = "渲染中" if is_rendering else "⚪暂停中"
-        
-        lines_to_save.append("统计信息:\\\\n")
-        lines_to_save.append(f"文件数量: {moved_count}\\\\n")
-        lines_to_save.append(f"最长渲染时间: {format_seconds(max_interval)}\\\\n")
-        lines_to_save.append(f"平均渲染时间: {format_seconds(avg_interval)}\\\\n")
-        lines_to_save.append(f"总渲染时间: {format_seconds(total_render_time)}\\\\n")
-        lines_to_save.append(f"程序运行时间: {format_seconds(total_time)}\\\\n")
-        lines_to_save.append(f"当前状态: {render_status}\\\\n")
-        
-        # 保存到文件
-        output_file = os.path.join(folder_path, "render_log.txt")
-        with open(output_file, 'w', encoding='utf-8') as f:
-            f.writelines(lines_to_save)
-            
-    except Exception as e:
-        print(f"保存日志文件失败: {e}")
-
-def get_log_file_path():
-    """获取当前会话的日志文件路径"""
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    # 使用程序启动时间作为文件名的一部分，格式：记录_0818_1430.txt
-    start_time = datetime.fromtimestamp(time.time()).strftime("%m%d_%H%M")
-    log_file_name = f"记录_{start_time}.txt"
-    return os.path.join(script_dir, log_file_name)
-
-def save_cmd_content_to_log(stats=None):
-    """保存当前程序状态到记录文件（替换模式）"""
-    try:
-        # 获取当前会话的日志文件路径
-        if not hasattr(save_cmd_content_to_log, 'log_file_path'):
-            save_cmd_content_to_log.log_file_path = get_log_file_path()
-        
-        log_file_path = save_cmd_content_to_log.log_file_path
-        
-        # 获取当前时间戳
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-        # 准备要写入的内容
-        log_entry = f"{'='*60}\\n"
-        log_entry += f"C4D文件管理器运行记录\\n"
-        log_entry += f"{'='*60}\\n"
-        log_entry += f"程序文件: {os.path.basename(__file__)}\\n"
-        log_entry += f"最后更新: {current_time}\\n"
-        log_entry += f"{'='*60}\\n\\n"
-        
-        # 如果有stats参数，记录程序统计信息
-        if stats:
-            moved_count = stats.get('moved_count', 0)
-            program_start = stats.get('program_start', time.time())
-            total_render_time = stats.get('total_render_time', 0)
-            total_time = time.time() - program_start
-            program_start_str = datetime.fromtimestamp(program_start).strftime("%Y-%m-%d %H:%M:%S")
-            
-            render_monitor = stats.get('render_monitor')
-            is_rendering = False
-            if render_monitor:
-                is_rendering = render_monitor.check_render_status()
-            
-            log_entry += f"程序启动时间: {program_start_str}\\n"
-            log_entry += f"当前运行状态: {'渲染中' if is_rendering else '⚪暂停中'}\\n"
-            log_entry += f"已处理文件数量: {moved_count}\\n"
-            log_entry += f"程序运行时长: {format_seconds(total_time)}\\n"
-            log_entry += f"总渲染时长: {format_seconds(total_render_time)}\\n"
-            log_entry += f"{'-'*60}\\n"
-            
-            # 记录最近的历史
-            history = stats.get('history', [])
-            if history:
-                log_entry += f"文件处理历史:\\n"
-                # 显示所有历史记录，但限制在最近50个
-                display_history = history[-50:] if len(history) > 50 else history
-                
-                # 生成带柱状图的历史记录（使用全局函数确保与CMD窗口完全一致）
-                enhanced_history = generate_bar_chart_for_history(display_history)
-                for line in enhanced_history:
-                    log_entry += f"{line}\\n"
-                
-                # 添加与CMD窗口相同的统计行
-                log_entry += f"{'-'*60}\\n"
-                first_run_moved = stats.get('first_run_moved', 0)
-                second_run_moved = stats.get('second_run_moved', 0)
-                effective_moved_count = moved_count - first_run_moved - second_run_moved
-                total_interval = stats.get('total_interval', 0)
-                max_interval = stats.get('max_interval', 0)
-                avg_interval = total_interval / effective_moved_count if effective_moved_count > 0 else 0
-                
-                # 生成与CMD窗口完全相同的统计行
-                render_indicator = "渲染中" if is_rendering else "⚪暂停中"
-                stat_line = f"数量: {moved_count} | 最长: {format_seconds(max_interval)} | 平均: {format_seconds(avg_interval)} | 总渲染时间: {format_seconds(total_render_time)} | 程序运行时间: {format_seconds(total_time)} | {render_indicator}"
-                log_entry += f"{stat_line}\\n"
-            else:
-                log_entry += f"暂无文件处理记录\\n"
-        
-        log_entry += f"\\n{'='*60}\\n"
-        log_entry += f"记录文件: {os.path.basename(log_file_path)}\\n"
-        log_entry += f"{'='*60}"
-        
-        # 覆盖写入到记录文件（替换模式）
-        with open(log_file_path, 'w', encoding='utf-8') as f:
-            f.write(log_entry)
-            
-    except Exception as e:
-        print(f"保存记录失败: {e}")
+    """键盘监听线程"""
+    while True:
+        try:
+            if msvcrt.kbhit():
+                key = msvcrt.getch()
+                if key == b'o' or key == b'O':  # 按 O 键打开上一个文件夹
+                    last_folder = stats.get('last_target_folder', None)
+                    if last_folder and os.path.exists(last_folder):
+                        open_last_folder(last_folder)
+                    else:
+                        print("没有可打开的文件夹记录")
+                elif key == b'q' or key == b'Q':  # 按 Q 键退出
+                    print("收到退出信号")
+                    stats['should_exit'] = True
+                    break
+            time.sleep(0.1)
+        except Exception as e:
+            print(f"键盘监听异常: {e}")
+            break
 
 def main_logic(stats):
     folder_path = os.path.dirname(os.path.abspath(__file__))
@@ -398,9 +278,17 @@ def main_logic(stats):
         stats['history'] = []
     if 'render_monitor' not in stats:
         stats['render_monitor'] = C4DRenderMonitor()
+    if 'last_log_save' not in stats:
+        stats['last_log_save'] = 0
     
     history = stats['history']
     render_monitor = stats['render_monitor']
+    
+    # 每10秒保存一次记录（实时更新）
+    current_time = time.time()
+    if current_time - stats['last_log_save'] > 10:  # 10秒间隔
+        save_cmd_content_to_log(stats)
+        stats['last_log_save'] = current_time
     
     try:
         # 检查渲染状态
@@ -447,11 +335,15 @@ def main_logic(stats):
                 
                 # 分析文件名结构：文件名+序号+.通道名称 或 文件名+序号
                 # 首先查找数字序列
-                match = re.search(r'(\\\\d{1,4})(?:\\\\.(\\[^.]+))?$', name)
+                match = re.search(r'(\d{1,4})(?:\.([^.]+))?$', name)
                 if match:
                     num = match.group(1)
                     channel_suffix = match.group(2)  # 通道名称（如果存在）
                     numlen = len(num)
+                    
+                    # 检查通道后缀是否在预定义列表中
+                    if channel_suffix and channel_suffix.lower() not in [s.lower() for s in channel_suffixes]:
+                        channel_suffix = None
                     
                     # 确定基础文件名（去除序号和通道后缀）
                     if channel_suffix:
@@ -586,94 +478,6 @@ def main_logic(stats):
         
         stat_line = f"数量: {moved_count} | 最长: {format_seconds(max_interval)} | 平均: {format_seconds(avg_interval)} | 总渲染时间: {format_seconds(total_render_time)} | 程序运行时间: {format_seconds(total_time)} | {render_indicator} {dots}"
         
-        # 为每行历史记录生成带柱状图的显示
-        def generate_bar_chart_for_history(history_lines):
-            if not history_lines:
-                return []
-                
-            # 分析所有历史记录，提取文件名和时间信息
-            parsed_lines = []
-            valid_intervals = []
-            
-            for line in history_lines:
-                if line.startswith('"') and '"' in line[1:]:
-                    # 找到文件名结束的位置
-                    end_quote_pos = line.find('"', 1)
-                    filename_part = line[:end_quote_pos + 1]
-                    time_part = line[end_quote_pos + 1:]
-                    
-                    # 提取时间间隔（秒）
-                    interval = 0
-                    if "[初始文件]" not in time_part and "[不完整渲染时长]" not in time_part and "[渲染暂停]" not in time_part:
-                        if ":" in time_part:
-                            time_clean = time_part.strip()
-                            if time_clean != "[00:00:00]":
-                                try:
-                                    h, m, s = map(int, time_clean.split(':'))
-                                    interval = h * 3600 + m * 60 + s
-                                    if interval > 0:
-                                        valid_intervals.append(interval)
-                                except:
-                                    pass
-                    
-                    parsed_lines.append({
-                        'filename': filename_part,
-                        'time': time_part,
-                        'interval': interval,
-                        'is_special': "[初始文件]" in time_part or "[不完整渲染时长]" in time_part or "[渲染暂停]" in time_part
-                    })
-                else:
-                    # 不是文件处理行，直接保持原样
-                    parsed_lines.append({'original_line': line})
-            
-            # 计算动态比例
-            if valid_intervals:
-                max_time = max(valid_intervals)
-                min_time = min(valid_intervals)
-            else:
-                max_time = min_time = 0
-            
-            # 找出最长的文件名长度
-            max_filename_length = 0
-            for item in parsed_lines:
-                if 'filename' in item:
-                    max_filename_length = max(max_filename_length, len(item['filename']))
-            
-            # 生成对齐的显示行
-            enhanced_lines = []
-            bar_width = 20
-            
-            for item in parsed_lines:
-                if 'original_line' in item:
-                    # 非文件处理行，直接添加
-                    enhanced_lines.append(item['original_line'])
-                else:
-                    # 文件处理行，添加柱状图
-                    filename = item['filename']
-                    time_part = item['time']
-                    interval = item['interval']
-                    is_special = item['is_special']
-                    
-                    # 计算填充空格
-                    padding = " " * (max_filename_length - len(filename))
-                    
-                    if is_special or interval == 0:
-                        # 特殊状态或无时间间隔，显示空白柱状图
-                        bar = ' ' * bar_width
-                    else:
-                        # 正常渲染时间，显示比例柱状图
-                        if max_time > min_time:
-                            ratio = (interval - min_time) / (max_time - min_time)
-                        else:
-                            ratio = 1.0
-                        
-                        filled_length = int(bar_width * ratio)
-                        bar = '█' * filled_length + ' ' * (bar_width - filled_length)
-                    
-                    enhanced_lines.append(f"{filename}{padding}|{bar}|{time_part}")
-            
-            return enhanced_lines
-        
         os.system('cls')
         enhanced_history = generate_bar_chart_for_history(history)
         for line in enhanced_history:
@@ -690,12 +494,95 @@ def main_logic(stats):
         stats['is_first_run'] = is_first_run
         stats['is_second_run'] = is_second_run
         stats['history'] = history
-        
-        # 每秒保存命令行输出到文本文件
-        save_cmd_content_to_log(stats)
-        
     except Exception as e:
         print(f"main_logic发生异常: {e}")
+
+def get_log_file_path():
+    """获取当前会话的日志文件路径"""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    # 使用程序启动时间作为文件名的一部分，格式：记录_0818_1430.txt
+    start_time = datetime.fromtimestamp(time.time()).strftime("%m%d_%H%M")
+    log_file_name = f"记录_{start_time}.txt"
+    return os.path.join(script_dir, log_file_name)
+
+def save_cmd_content_to_log(stats=None):
+    """保存当前程序状态到记录文件（替换模式）"""
+    try:
+        # 获取当前会话的日志文件路径
+        if not hasattr(save_cmd_content_to_log, 'log_file_path'):
+            save_cmd_content_to_log.log_file_path = get_log_file_path()
+        
+        log_file_path = save_cmd_content_to_log.log_file_path
+        
+        # 获取当前时间戳
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # 准备要写入的内容
+        log_entry = f"{'='*60}\n"
+        log_entry += f"C4D文件管理器运行记录\n"
+        log_entry += f"{'='*60}\n"
+        log_entry += f"程序文件: {os.path.basename(__file__)}\n"
+        log_entry += f"最后更新: {current_time}\n"
+        log_entry += f"{'='*60}\n\n"
+        
+        # 如果有stats参数，记录程序统计信息
+        if stats:
+            moved_count = stats.get('moved_count', 0)
+            program_start = stats.get('program_start', time.time())
+            total_render_time = stats.get('total_render_time', 0)
+            total_time = time.time() - program_start
+            program_start_str = datetime.fromtimestamp(program_start).strftime("%Y-%m-%d %H:%M:%S")
+            
+            render_monitor = stats.get('render_monitor')
+            is_rendering = False
+            if render_monitor:
+                is_rendering = render_monitor.check_render_status()
+            
+            log_entry += f"程序启动时间: {program_start_str}\n"
+            log_entry += f"当前运行状态: {'渲染中' if is_rendering else '⚪暂停中'}\n"
+            log_entry += f"已处理文件数量: {moved_count}\n"
+            log_entry += f"程序运行时长: {format_seconds(total_time)}\n"
+            log_entry += f"总渲染时长: {format_seconds(total_render_time)}\n"
+            log_entry += f"{'-'*60}\n"
+            
+            # 记录最近的历史
+            history = stats.get('history', [])
+            if history:
+                log_entry += f"文件处理历史:\n"
+                # 显示所有历史记录（完整列表）
+                display_history = history
+                
+                # 生成带柱状图的历史记录（使用全局函数确保与CMD窗口完全一致）
+                enhanced_history = generate_bar_chart_for_history(display_history)
+                for line in enhanced_history:
+                    log_entry += f"{line}\n"
+                
+                # 添加与CMD窗口相同的统计行
+                log_entry += f"{'-'*60}\n"
+                first_run_moved = stats.get('first_run_moved', 0)
+                second_run_moved = stats.get('second_run_moved', 0)
+                effective_moved_count = moved_count - first_run_moved - second_run_moved
+                total_interval = stats.get('total_interval', 0)
+                max_interval = stats.get('max_interval', 0)
+                avg_interval = total_interval / effective_moved_count if effective_moved_count > 0 else 0
+                
+                # 生成与CMD窗口完全相同的统计行
+                render_indicator = "渲染中" if is_rendering else "⚪暂停中"
+                stat_line = f"数量: {moved_count} | 最长: {format_seconds(max_interval)} | 平均: {format_seconds(avg_interval)} | 总渲染时间: {format_seconds(total_render_time)} | 程序运行时间: {format_seconds(total_time)} | {render_indicator}"
+                log_entry += f"{stat_line}\n"
+            else:
+                log_entry += f"暂无文件处理记录\n"
+        
+        log_entry += f"\n{'='*60}\n"
+        log_entry += f"记录文件: {os.path.basename(log_file_path)}\n"
+        log_entry += f"{'='*60}"
+        
+        # 覆盖写入到记录文件（替换模式）
+        with open(log_file_path, 'w', encoding='utf-8') as f:
+            f.write(log_entry)
+            
+    except Exception as e:
+        print(f"保存记录失败: {e}")
 
 if __name__ == "__main__":
     print("C4D文件管理器已启动")
@@ -728,15 +615,47 @@ if __name__ == "__main__":
 '''
 
 def main():
-    # 获取文档
-    doc = c4d.documents.GetActiveDocument()
-    if not doc:
-        print("请先打开C4D文档")
+    try:
+        # 检查是否在C4D环境中运行
+        if not hasattr(c4d, 'documents'):
+            print("错误：这个脚本必须在C4D的脚本管理器中运行")
+            print("请确保：")
+            print("1. 已打开Cinema 4D软件")
+            print("2. 在C4D的脚本管理器中执行此脚本")
+            print("3. 不要直接在Python环境中运行")
+            return
+
+        print("开始执行脚本...")
+        # 获取文档
+        doc = c4d.documents.GetActiveDocument()
+        if not doc:
+            print("错误：请先打开C4D文档")
+            print("请确保：")
+            print("1. 已创建或打开一个C4D文档")
+            print("2. 文档窗口处于活动状态")
+            return
+        print("成功获取C4D文档")
+        
+        # 获取文档路径
+        doc_path = doc.GetDocumentPath()
+        if not doc_path:
+            print("错误：请先保存文档")
+            print("请执行以下步骤：")
+            print("1. 点击'文件' > '保存'")
+            print("2. 选择保存位置并确认")
+            print("3. 然后再次运行此脚本")
+            return
+        print(f"文档路径：{doc_path}")
+    except ImportError:
+        print("错误：无法导入C4D模块")
+        print("请确保在C4D的脚本管理器中运行此脚本")
         return
-    # 获取文档路径
-    doc_path = doc.GetDocumentPath()
-    if not doc_path:
-        print("请先保存文档")
+    except Exception as e:
+        print(f"执行过程中发生错误：{str(e)}")
+        print("请检查：")
+        print("1. C4D软件是否正常运行")
+        print("2. 是否有足够的系统权限")
+        print("3. 系统资源是否充足")
         return
     # 目标路径
     target_folder = os.path.join(doc_path, "0")
@@ -755,14 +674,60 @@ def main():
         except Exception as e:
             print(f"创建文件失败: {e}")
             return
-    # 启动 - 使用最简单的方式
+    # 启动 - 使用更可靠的方式
     work_dir = os.path.dirname(mf_path)
-    cmd = f'start cmd /c "cd /d "{work_dir}" && python mf.py && pause"'
+    print(f"工作目录: {work_dir}")
+    
     try:
-        os.system(cmd)
-        print("脚本已启动")
+        # 检查Python是否可用
+        python_check = os.system('python --version')
+        if python_check != 0:
+            print("错误: 未找到Python，请确保Python已正确安装并添加到系统环境变量")
+            return
+            
+        # 直接使用subprocess启动，不创建bat文件
+        import subprocess
+        
+        try:
+            # 使用Python直接启动mf.py，在新的命令行窗口中运行
+            print("正在启动脚本...")
+            
+            # 构建启动命令 - 修复引号嵌套问题
+            cmd = f'start "C4D监控" cmd /k "cd /d "{work_dir}" && python mf.py"'
+            
+            # 启动新窗口
+            process = subprocess.Popen(cmd, 
+                                    shell=True,
+                                    cwd=work_dir)
+            print("脚本已启动")
+            print("监控程序正在新窗口中运行")
+                
+        except Exception as e:
+            print(f"启动脚本失败: {e}")
+            print("尝试备用启动方法...")
+            
+            # 备用方法1：简化命令
+            try:
+                simple_cmd = f'start cmd /k "cd /d "{work_dir}" && python mf.py"'
+                os.system(simple_cmd)
+                print("已使用备用方法1启动")
+            except Exception as backup_error1:
+                print(f"备用方法1失败: {backup_error1}")
+                
+                # 备用方法2：最简单的启动方式
+                try:
+                    os.chdir(work_dir)
+                    os.system('start cmd /k python mf.py')
+                    print("已使用备用方法2启动")
+                except Exception as backup_error2:
+                    print(f"所有启动方法都失败: {backup_error2}")
+        
     except Exception as e:
-        print(f"启动失败: {e}")
+        print(f"启动失败，错误信息: {e}")
+        print("请检查以下几点：")
+        print("1. Python是否正确安装")
+        print("2. 是否有权限访问目标文件夹")
+        print("3. 路径中是否包含特殊字符")
 
 if __name__=='__main__':
     main()
